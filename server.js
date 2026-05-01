@@ -3,14 +3,12 @@ const http = require('http');
 const { Server } = require('socket.io');
 
 const app = express();
-
-// Aumenta o limite para processar imagens pesadas em Base64
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const server = http.createServer(app);
 const io = new Server(server, {
-    maxHttpBufferSize: 1e8 // Permite tráfego de até 100MB
+    maxHttpBufferSize: 1e8
 });
 
 app.use(express.static('public'));
@@ -139,7 +137,6 @@ io.on('connection', (socket) => {
                 guess,
                 frame: room.currentFrame + 1
             };
-            // Salva na lista de pendentes da sala
             room.pendingGuesses.push(data);
 
             room.players.forEach(p => {
@@ -194,4 +191,17 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => console.log('Servidor ON: http://localhost:3000'));
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, '0.0.0.0', () => {
+    console.log('---------------------------------');
+    console.log(`🚀 Servidor ON!`);
+    console.log(`📡 Porta: ${PORT}`);
+    
+    if (process.env.PORT) {
+        console.log(`🌍 O servidor está acessível pela URL do seu Host`);
+    } else {
+        console.log(`🏠 Local: http://localhost:${PORT}`);
+    }
+    console.log('---------------------------------');
+});
