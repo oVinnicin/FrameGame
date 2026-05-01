@@ -2,9 +2,9 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 
+const app = express();
 app.use(express.static('public'));
 
-const app = express();
 // Aumenta o limite para processar imagens pesadas em Base64
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
