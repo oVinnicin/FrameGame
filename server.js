@@ -191,17 +191,8 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080; 
 
 server.listen(PORT, '0.0.0.0', () => {
-    console.log('---------------------------------');
-    console.log(`🚀 Servidor ON!`);
-    console.log(`📡 Porta: ${PORT}`);
-    
-    if (process.env.PORT) {
-        console.log(`🌍 O servidor está acessível pela URL do seu Host`);
-    } else {
-        console.log(`🏠 Local: http://localhost:${PORT}`);
-    }
-    console.log('---------------------------------');
+    console.log(`🚀 Server ON at port ${PORT}`);
 });
