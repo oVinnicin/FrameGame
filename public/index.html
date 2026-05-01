@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Jogo dos Frames</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-waves bg-[var(--gartic-blue)] text-slate-800 min-h-screen overflow-hidden font-sans">
+
+    <div id="notif-box" class="notification"></div>
+
+    <!-- LOGIN -->
+    <div id="login-screen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div class="bg-white p-10 rounded-[3rem] w-full max-w-sm shadow-2xl text-center">
+            <h1 class="text-5xl font-game text-indigo-600 mb-8 tracking-tighter">Frames!</h1>
+            <div class="space-y-4">
+                <input type="text" id="nick" placeholder="Seu apelido..." maxlength="12"
+                    class="w-full bg-slate-100 p-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 outline-none font-bold text-center text-lg">
+                <input type="text" id="room-input" placeholder="CÓDIGO DA SALA"
+                    class="w-full bg-slate-100 p-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 outline-none font-black text-center text-lg uppercase">
+                <button onclick="join()"
+                    class="w-full bg-yellow-400 hover:bg-yellow-300 text-yellow-900 py-4 rounded-2xl font-game text-xl border-b-4 border-yellow-600 transition-all">JOGAR</button>
+                <button onclick="create()" class="w-full text-indigo-600 py-2 font-bold hover:underline">Criar Sala
+                    Privada</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETUP PANEL -->
+    <div id="setup-panel" class="hidden fixed inset-0 z-50 p-4 flex items-center justify-center">
+        <div class="bg-white w-full max-w-2xl rounded-[3rem] p-10 shadow-2xl">
+            <h2 class="text-4xl font-game text-indigo-600 mb-6 text-center">Configurar Rodada</h2>
+            <div class="space-y-6">
+                <input type="text" id="movie-title" placeholder="Nome do Filme (Resposta)"
+                    class="w-full bg-slate-100 p-5 rounded-2xl border-2 border-slate-200 font-bold text-xl outline-none focus:border-indigo-500">
+                <div class="p-10 border-4 border-dashed border-slate-200 rounded-[2rem] text-center hover:bg-slate-50 transition-colors cursor-pointer"
+                    onclick="document.getElementById('file-input').click()">
+                    <input type="file" id="file-input" multiple accept="image/*" class="hidden">
+                    <span class="text-indigo-500 text-4xl block mb-2">🖼️</span>
+                    <p class="font-black text-slate-600 text-lg">Clique para escolher 6 Frames</p>
+                    <p id="file-count" class="text-sm text-slate-400 mt-2 font-bold">Nenhum arquivo</p>
+                </div>
+                <button onclick="startGame()" id="start-btn"
+                    class="w-full bg-emerald-500 hover:bg-emerald-400 text-white py-5 rounded-3xl font-game text-2xl border-b-8 border-emerald-700">INICIAR
+                    PARTIDA</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME VIEW -->
+    <div id="game-view" class="hidden flex h-screen p-4 gap-4">
+        <aside class="w-72 bg-white rounded-[2.5rem] shadow-xl p-6 flex flex-col overflow-hidden">
+            <div class="flex items-center gap-2 mb-6">
+                <span class="text-2xl">🎖️</span>
+                <h3 class="font-game text-indigo-600 text-xl uppercase tracking-tighter">Participantes</h3>
+            </div>
+            <div id="player-list" class="space-y-3 flex-1 overflow-y-auto pr-2"></div>
+            <div id="room-tag"
+                class="mt-4 bg-indigo-100 p-2 rounded-xl text-center font-black text-indigo-600 text-xs tracking-widest">
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col gap-4">
+            <div class="flex-1 bg-white rounded-[2.5rem] shadow-xl p-4 flex flex-col relative overflow-hidden">
+                <div class="flex-1 bg-slate-900 rounded-[2rem] overflow-hidden relative group">
+                    <img id="main-frame" src="" class="w-full h-full object-contain">
+                    <div id="overlay"
+                        class="hidden absolute inset-0 bg-indigo-600/95 flex flex-col items-center justify-center z-10 text-center animate-bounce-short">
+                        <p class="text-yellow-400 font-game text-2xl mb-4">A RESPOSTA ERA:</p>
+                        <h2 id="correct-title" class="text-white text-6xl font-game uppercase px-6"></h2>
+                    </div>
+                </div>
+
+                <!-- Controles Jogador -->
+                <div id="player-ui" class="hidden pt-4 flex gap-3">
+                    <input type="text" id="guess" placeholder="Digite seu palpite aqui..."
+                        class="flex-1 bg-slate-100 p-5 rounded-2xl border-2 border-slate-200 font-bold text-xl outline-none focus:border-indigo-500">
+                    <button onclick="sendGuess()"
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white px-10 rounded-2xl font-game text-xl border-b-4 border-indigo-800">OK!</button>
+                </div>
+
+                <!-- Controles Staff -->
+                <div id="staff-ui" class="hidden pt-4 grid grid-cols-2 gap-4">
+                    <div id="nav-dots" class="flex justify-center gap-2 items-center"></div>
+                    <div class="flex gap-2">
+                        <button onclick="toggleReveal()"
+                            class="flex-1 bg-emerald-500 text-white font-game rounded-2xl border-b-4 border-emerald-700">REVELAR</button>
+                        <button onclick="requestNextRound()"
+                            class="px-4 bg-slate-700 text-white font-bold rounded-2xl border-b-4 border-slate-900 text-xs">NOVA
+                            PARTIDA</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Direita: Logs (Apenas Staff) -->
+        <aside id="staff-log"
+            class="hidden w-80 bg-white rounded-[2.5rem] border-b-8 border-slate-200 shadow-xl p-6 flex flex-col overflow-hidden">
+            <div class="mb-6">
+                <h3 class="font-game text-slate-400 text-xs uppercase mb-1">Filme Atual:</h3>
+                <p id="staff-movie-name" class="text-indigo-600 font-black text-xl italic truncate">---</p>
+            </div>
+            <button onclick="fetchFullRanking()"
+                class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 p-3 rounded-xl font-bold text-xs mb-6 transition-all uppercase tracking-wider">Histórico
+                Geral</button>
+            <h3 class="font-game text-indigo-600 text-sm mb-4">MODERAÇÃO</h3>
+            <div id="log-list" class="space-y-4 flex-1 overflow-y-auto pr-2"></div>
+        </aside>
+
+        <!-- MODAL RANKING -->
+        <div id="ranking-modal"
+            class="hidden fixed inset-0 z-[300] bg-indigo-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div
+                class="bg-white w-full max-w-md rounded-[3rem] border-b-[12px] border-indigo-800 shadow-2xl overflow-hidden">
+                <div class="p-6 bg-indigo-600 flex justify-between items-center">
+                    <h2 class="font-game text-white text-2xl">PONTUAÇÃO DO EVENTO</h2>
+                    <button onclick="document.getElementById('ranking-modal').classList.add('hidden')"
+                        class="text-white text-2xl font-black">×</button>
+                </div>
+                <div id="full-ranking-list" class="p-8 space-y-4 max-h-[60vh] overflow-y-auto"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
