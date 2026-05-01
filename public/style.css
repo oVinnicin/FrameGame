@@ -7,12 +7,15 @@
 body {
     font-family: 'Nunito', sans-serif;
     background-color: var(--gartic-bg);
+    overflow-x: hidden;
 }
 
 .bg-waves {
-    background-image: url("../assets/pattern-2.svg") !important;
-    background-size: auto;
-    background-repeat: repeat;
+    background-image: url("../assets/wave-pattern-2.svg") !important;
+    background-size: cover;
+    /* background-size: auto; */
+    background-repeat: no-repeat;
+    /* background-repeat: repeat; */
     background-position: center;
 }
 
