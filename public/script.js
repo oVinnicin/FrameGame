@@ -131,8 +131,23 @@ function toggleReveal() { socket.emit('toggle_reveal', { roomId: currentRoom });
 
 socket.on('update_reveal', (data) => {
     const overlay = document.getElementById('overlay');
+    const guessInput = document.getElementById('guess');
     document.getElementById('correct-title').innerText = data.title;
     data.revealed ? overlay.classList.remove('hidden') : overlay.classList.add('hidden');
+
+    if (data.revealed) {
+        overlay.classList.remove('hidden');
+        if (myRole === 'player') {
+            guessInput.disabled = true;
+            guessInput.placeholder = "Rodada encerrada!";
+        }
+    } else {
+        overlay.classList.add('hidden');
+        if (myRole === 'player') {
+            guessInput.disabled = false;
+            guessInput.placeholder = "Seu palpite...";
+        }
+    }
 });
 
 
@@ -170,19 +185,19 @@ socket.on('remove_log_entry', (lid) => {
 socket.on('update_players', (players) => {
     const list = document.getElementById('player-list');
     list.innerHTML = '';
-    players.sort((a,b) => b.points - a.points).forEach((p, idx) => {
+    players.sort((a, b) => b.points - a.points).forEach((p, idx) => {
         const isMe = p.id === socket.id;
         const div = document.createElement('div');
         div.className = `flex flex-col gap-2 p-3 rounded-2xl border-b-4 transition-all ${isMe ? 'bg-indigo-600 border-indigo-800 text-white scale-100' : 'bg-slate-100 border-slate-300 text-slate-800'}`;
-        
+
         let controls = '';
-        if(myRole === 'staff' && !isMe) {
+        if (myRole === 'staff' && !isMe) {
             controls = `
                 <div class="flex gap-1 mt-1">
-                    ${p.role !== 'staff' ? 
-                        `<button onclick="socket.emit('promote_member', {roomId: currentRoom, targetId: '${p.id}'})" class="flex-1 bg-emerald-600 p-1 rounded text-[8px] font-black uppercase">Promover</button>` :
-                        `<button onclick="socket.emit('demote_member', {roomId: currentRoom, targetId: '${p.id}'})" class="flex-1 bg-amber-600 p1 rounded text-[8px] font-black uppercase">Rebaixar</button>`
-                    }
+                    ${p.role !== 'staff' ?
+                    `<button onclick="socket.emit('promote_member', {roomId: currentRoom, targetId: '${p.id}'})" class="flex-1 bg-emerald-600 p-1 rounded text-[8px] font-black uppercase text-white">Promover</button>` :
+                    `<button onclick="socket.emit('demote_member', {roomId: currentRoom, targetId: '${p.id}'})" class="flex-1 bg-amber-400 p1 rounded text-[8px] font-black uppercase text-white">Rebaixar</button>`
+                }
                     <button onclick="socket.emit('kick_player', {roomId: currentRoom, targetId: '${p.id}'})" class="flex-1 bg-red-500 p-1 rounded text-[8px] font-black uppercase text-white">Expulsar</button>
                 </div>`;
         }
@@ -190,7 +205,7 @@ socket.on('update_players', (players) => {
         div.innerHTML = `
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                    <span class="font-game opacity-50 text-xs">#${idx+1}</span>
+                    <span class="font-game opacity-50 text-xs">#${idx + 1}</span>
                     <p class="font-black truncate w-24">${p.name}</p>
                 </div>
                 <p class="font-game text-sm bg-black/10 px-2 rounded-lg">${p.points} <span class="text-[8px]">PTS</span></p>
@@ -224,7 +239,7 @@ socket.on('full_ranking_data', (history) => {
     modal.classList.remove('hidden');
     list.innerHTML = '';
 
-    const sorted = Object.entries(history).sort(([,a], [,b]) => b - a);
+    const sorted = Object.entries(history).sort(([, a], [, b]) => b - a);
 
     sorted.forEach(([name, points], index) => {
         const item = document.createElement('div');
@@ -241,6 +256,14 @@ function requestNextRound() { socket.emit('next_round', { roomId: currentRoom })
 
 socket.on('prepare_next_round', () => {
     document.getElementById('overlay').classList.add('hidden');
+
+    const guessInput = document.getElementById('guess');
+
+    if (myRole === 'player') {
+        guessInput.disabled = false;
+        guessInput.placeholder = "Seu palpite...";
+    }
+
     document.getElementById('log-list').innerHTML = '';
     if (myRole === 'staff') {
         document.getElementById('staff-movie-name').innerText = "Aguardando...";
@@ -253,6 +276,35 @@ socket.on('prepare_next_round', () => {
     }
 });
 
-document.getElementById('file-input').onchange = (e) => { 
-    document.getElementById('file-count').innerText = `${e.target.files.length} selecionados`; 
+document.getElementById('file-input').onchange = (e) => {
+    document.getElementById('file-count').innerText = `${e.target.files.length} selecionados`;
 };
+
+
+window.onload = () => {
+    const params = new URLSearchParams(window.location.search);
+    const roomFromUrl = params.get('room');
+    if (roomFromUrl) {
+        document.getElementById('room-input').value = roomFromUrl.toUpperCase();
+        notify("Código da sala preenchido via link!");
+    }
+};
+
+function copyRoomCode() {
+    const roomText = document.getElementById('room-tag').innerText;
+    const code = roomText.replace('SALA: ', '');
+
+    if (code && code !== '----') {
+        navigator.clipboard.writeText(code).then(() => {
+            notify("Código copiado! 📋");
+        }).catch(err => {
+            const tempInput = document.createElement("input");
+            tempInput.value = code;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            notify("Código copiado!");
+        });
+    }
+}
