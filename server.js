@@ -129,7 +129,7 @@ io.on('connection', (socket) => {
     // LOG E APROVAÇÃO (Com ID Único)
     socket.on('send_guess', ({ roomId, username, guess }) => {
         const room = rooms[roomId];
-        if (room) {
+        if (room && !room.revealed) {
             const data = {
                 id: Math.random().toString(36).substring(2, 9),
                 playerSocketId: socket.id,
