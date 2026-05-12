@@ -1,42 +1,46 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jogo dos Frames</title>
+    <link rel="icon" type="image/png" sizes="96x96" href="./assets/images/midiaFrame.png">
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 
-<body class="bg-waves bg-[var(--gartic-blue)] text-slate-800 min-h-screen font-sans">
-
-    <div id="notif-box" class="notification"></div>
+<body class="bg-pattern bg-[var(--frame-bg)] text-slate-800 min-h-screen font-sans">
 
     <!-- LOGIN -->
     <div id="login-screen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div class="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] w-full max-w-sm shadow-2xl text-center">
-            <h1 class="text-4xl md:text-5xl font-game text-indigo-600 mb-8 tracking-tighter">Jogo dos Frames</h1>
+            <h1 class="text-4xl md:text-5xl font-game text-yellow-600 mb-8 tracking-tighter">Jogo dos Frames</h1>
             <div class="space-y-4">
                 <input type="text" id="nick" placeholder="Seu apelido..." maxlength="12"
-                    class="w-full bg-slate-100 p-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 outline-none font-bold text-center text-lg">
+                    class="w-full bg-slate-100 p-4 rounded-2xl border-2 border-slate-200 focus:border-yellow-500 outline-none font-bold text-center text-lg">
                 <input type="text" id="room-input" placeholder="CÓDIGO DA SALA"
-                    class="w-full bg-slate-100 p-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 outline-none font-black text-center text-lg uppercase">
+                    class="w-full bg-slate-100 p-4 rounded-2xl border-2 border-slate-200 focus:border-yellow-500 outline-none font-black text-center text-lg uppercase">
                 <button onclick="join()"
                     class="w-full bg-yellow-400 hover:bg-yellow-300 text-yellow-900 py-4 rounded-2xl font-game text-xl border-b-4 border-yellow-600 transition-all uppercase">Jogar</button>
-                <button onclick="create()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-yellow-900 py-4 rounded-2xl font-game text-xl border-b-4 border-yellow-600 transition-all uppercase">Criar Sala</button>
+                <button onclick="create()"
+                    class="text-yellow-900 hover:text-yellow-400 text-[15px] font-game uppercase">Criar
+                    Sala</button>
             </div>
         </div>
     </div>
 
     <!-- SETUP PANEL -->
     <div id="setup-panel" class="hidden fixed inset-0 z-50 p-4 flex items-center justify-center">
-        <div class="bg-white w-full max-w-2xl rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
-            <h2 class="text-3xl md:text-4xl font-game text-indigo-600 mb-6 text-center">Configurar Rodada</h2>
+        <div
+            class="bg-white w-full max-w-2xl rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <h2 class="text-3xl md:text-4xl font-game text-yellow-600 mb-6 text-center">Configurar Rodada</h2>
             <div class="space-y-6">
                 <input type="text" id="movie-title" placeholder="Nome do Filme"
-                    class="w-full bg-slate-100 p-4 rounded-2xl border-2 border-slate-200 font-bold text-lg outline-none">
+                    class="w-full bg-slate-100 p-4 rounded-2xl border-2 border-slate-200 focus:border-yellow-500 font-bold text-lg outline-none">
                 <div class="p-6 md:p-10 border-4 border-dashed border-slate-200 rounded-[2rem] text-center hover:bg-slate-50 cursor-pointer"
                     onclick="document.getElementById('file-input').click()">
                     <input type="file" id="file-input" multiple accept="image/*" class="hidden">
@@ -45,31 +49,42 @@
                     <p id="file-count" class="text-sm text-slate-400 mt-2 font-bold">Nenhum arquivo</p>
                 </div>
                 <button onclick="startGame()" id="start-btn"
-                    class="w-full bg-emerald-500 hover:bg-emerald-400 text-white py-4 rounded-3xl font-game text-xl border-b-8 border-emerald-700">INICIAR</button>
+                    class="w-full bg-yellow-400 hover:bg-yellow-300 text-yellow-900 py-4 rounded-3xl font-game text-xl border-b-8 border-yellow-600">INICIAR</button>
             </div>
         </div>
     </div>
 
     <!-- GAME VIEW - RESPONSIVE GRID -->
     <div id="game-view" class="hidden flex flex-col lg:flex-row min-h-screen p-2 md:p-4 gap-4">
-        
+
         <!-- Participantes (Mobile: Topo, Desktop: Esquerda) -->
-        <aside class="w-full lg:w-72 bg-white rounded-[2rem] shadow-xl p-4 flex flex-col h-[250px] lg:h-auto">
-            <div class="flex items-center gap-2 mb-4">
-                <span class="text-xl">🎖️</span>
-                <h3 class="font-game text-indigo-600 text-lg uppercase">Pontuação</h3>
+        <aside
+            class="w-full lg:w-72 bg-white rounded-[2rem] shadow-xl p-4 flex flex-col h-[350px] lg:h-[calc(100vh-40px)] lg:sticky lg:top-5">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🎖️</span>
+                    <h3 class="font-game text-yellow-600 text-lg uppercase">Pontuação</h3>
+                </div>
+                <button onclick="leaveRoom()"
+                    class="text-red-400 hover:text-red-600 text-[15px] font-game uppercase">Sair</button>
             </div>
-            <div id="player-list" class="space-y-2 flex-1 overflow-y-auto pr-2"></div>
-            <div id="room-tag" onclick="copyRoomCode()" class="mt-2 bg-indigo-100 p-2 rounded-xl text-center font-black text-indigo-600 text-xs"></div>
+
+            <div id="player-list" class="space-y-2 overflow-y-auto flex-1 pr-2 scroll-custom">
+            </div>
+
+            <div id="room-tag" onclick="copyRoomCode()"
+                class="mt-4 bg-yellow-200 p-2 rounded-xl text-center font-black text-yellow-600 text-xs cursor-pointer">
+                SALA: ----</div>
         </aside>
 
         <!-- Main Game Area -->
-        <main class="flex-1 flex flex-col gap-4">
-            <div class="bg-white rounded-[2rem] shadow-xl p-3 md:p-4 flex flex-col relative overflow-hidden">
+        <main class="flex-1 flex flex-col lg:h-[calc(100vh-40px)] lg:sticky lg:top-5 min-h-0">
+            <div class="bg-white rounded-[2rem] shadow-xl p-3 md:p-4 flex flex-col relative overflow-hidden h-full">
                 <!-- Frame Container -->
-                <div class="aspect-video bg-slate-900 rounded-[1.5rem] overflow-hidden relative group">
+                <div class="aspect-video bg-zinc-900 rounded-[1.5rem] overflow-hidden relative group">
                     <img id="main-frame" src="" class="w-full h-full object-contain">
-                    <div id="overlay" class="hidden absolute inset-0 bg-indigo-600/95 flex flex-col items-center justify-center z-10 text-center p-4">
+                    <div id="overlay"
+                        class="hidden absolute inset-0 bg-slate-600/95 flex flex-col items-center justify-center z-10 text-center p-4">
                         <p class="text-yellow-400 font-game text-lg md:text-2xl mb-2">A RESPOSTA ERA:</p>
                         <h2 id="correct-title" class="text-white text-3xl md:text-6xl font-game uppercase"></h2>
                     </div>
@@ -78,47 +93,62 @@
                 <!-- Player Input -->
                 <div id="player-ui" class="hidden pt-4 flex flex-col sm:flex-row gap-3">
                     <input type="text" id="guess" placeholder="Seu palpite..."
-                        class="flex-1 bg-slate-100 p-4 rounded-2xl border-2 border-slate-200 font-bold text-lg outline-none">
+                        class="flex-1 bg-slate-100 p-4 rounded-2xl border-2 border-slate-200 focus:border-yellow-500 font-bold text-lg outline-none">
                     <button onclick="sendGuess()"
-                        class="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-game text-xl border-b-4 border-indigo-800">ENVIAR</button>
+                        class="bg-yellow-400 text-yellow-900 px-8 py-4 rounded-2xl font-game text-xl border-b-4 border-yellow-600">ENVIAR</button>
                 </div>
 
                 <!-- Staff Controls -->
                 <div id="staff-ui" class="hidden pt-4 flex flex-col gap-4">
                     <div id="nav-dots" class="flex flex-wrap justify-center gap-2"></div>
                     <div class="flex gap-2">
-                        <button onclick="toggleReveal()" class="flex-1 py-3 bg-emerald-500 text-white font-game rounded-xl border-b-4 border-emerald-700">REVELAR</button>
-                        <button onclick="requestNextRound()" class="px-4 py-3 bg-slate-700 text-white font-bold rounded-xl border-b-4 border-slate-900 text-xs">NOVA PARTIDA</button>
+                        <button onclick="toggleReveal()"
+                            class="flex-1 py-3 bg-emerald-500 text-white font-game rounded-xl border-b-4 border-emerald-700">REVELAR</button>
+                        <button onclick="requestNextRound()"
+                            class="px-4 py-3 bg-slate-700 text-white font-bold rounded-xl border-b-4 border-slate-900 text-xs">NOVA
+                            PARTIDA</button>
                     </div>
                 </div>
             </div>
         </main>
 
         <!-- Moderação (Abaixo no Mobile) -->
-        <aside id="staff-log" class="hidden w-full lg:w-80 bg-white rounded-[2rem] shadow-xl p-4 flex flex-col">
-            <div class="mb-4">
-                <h3 class="font-game text-slate-400 text-xs uppercase mb-1 text-center">Filme Atual:</h3>
-                <p id="staff-movie-name" class="text-indigo-600 font-black text-lg italic truncate text-center">---</p>
-                <button onclick="fetchFullRanking()" class="w-full mt-2 bg-slate-100 p-2 rounded-xl font-bold text-[10px] uppercase">Histórico Geral</button>
+        <aside id="staff-log"
+            class="hidden w-full lg:w-80 bg-white rounded-[2rem] shadow-xl p-4 flex flex-col h-[450px] lg:h-[calc(100vh-40px)] lg:sticky lg:top-5">
+            <div class="mb-4 text-center">
+                <h3 class="font-game text-slate-400 text-xs uppercase mb-1">Filme Atual:</h3>
+                <p id="staff-movie-name" class="text-yellow-600 font-black text-lg italic truncate">---</p>
+                <button onclick="fetchFullRanking()"
+                    class="w-full mt-2 bg-slate-100 p-2 rounded-xl font-bold text-[10px] uppercase">Histórico
+                    Geral</button>
             </div>
-            <div id="log-list" class="space-y-3 overflow-y-auto max-h-[400px] lg:max-h-none"></div>
+
+            <div id="log-list" class="space-y-3 overflow-y-auto flex-1 pr-2 scroll-custom">
+            </div>
         </aside>
 
         <!-- MODAL RANKING -->
         <div id="ranking-modal"
-            class="hidden fixed inset-0 z-[300] bg-indigo-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+            class="hidden fixed inset-0 z-[300] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div
-                class="bg-white w-full max-w-md rounded-[3rem] border-b-[12px] border-indigo-800 shadow-2xl overflow-hidden">
-                <div class="p-6 bg-indigo-600 flex justify-between items-center">
-                    <h2 class="font-game text-white text-2xl">PONTUAÇÃO DO EVENTO</h2>
+                class="bg-white w-full max-w-md rounded-[3rem] border-b-[12px] border-yellow-600 shadow-2xl overflow-hidden">
+                <div class="p-6 bg-yellow-400 flex justify-between items-center">
+                    <h2 class="font-game text-yellow-900 text-2xl">PONTUAÇÃO DO EVENTO</h2>
                     <button onclick="document.getElementById('ranking-modal').classList.add('hidden')"
-                        class="text-white text-2xl font-black">×</button>
+                        class="text-yellow-900 hover:text-yellow-600 text-2xl font-black">×</button>
                 </div>
                 <div id="full-ranking-list" class="p-8 space-y-4 max-h-[60vh] overflow-y-auto"></div>
+                <button onclick="copyFullRanking()"
+                        class="flex flex-col items-center justify-center w-full text-center bg-yellow-400 hover:bg-yellow-300 text-yellow-900 p-3 font-game text-sm transition-all active:border-b-0 active:translate-y-1">
+                        Copiar Tudo
+                    </button>
             </div>
         </div>
+
+        <div id="notif-box" class="notification bg-yellow-400 text-yellow-900"></div>
     </div>
 
     <script src="script.js"></script>
 </body>
+
 </html>

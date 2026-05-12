@@ -1,5 +1,6 @@
 const socket = io();
 let myRole = 'player', myNick = '', currentRoom = '', currentFrames = [];
+let attemptsLeft = 1;
 
 function notify(msg) {
     const el = document.getElementById('notif-box');
@@ -8,6 +9,13 @@ function notify(msg) {
 }
 
 socket.on('notification', (msg) => notify(msg));
+
+socket.on('room_not_found', (msg) => {
+    notify(msg);
+
+    localStorage.removeItem('game_room');
+    localStorage.removeItem('game_role');
+});
 
 function create() {
     myNick = document.getElementById('nick').value;
@@ -21,7 +29,10 @@ function join() {
 }
 
 socket.on('room_created', (id) => {
-    myRole = 'staff'; currentRoom = id;
+    myRole = 'staff'; currentRoom = id; myNick = document.getElementById('nick').value;
+    localStorage.setItem('game_nick', myNick);
+    localStorage.setItem('game_room', id);
+    localStorage.setItem('game_role', 'staff');
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('setup-panel').classList.remove('hidden');
     document.getElementById('room-tag').innerText = `SALA: ${id}`;
@@ -29,6 +40,8 @@ socket.on('room_created', (id) => {
 
 socket.on('room_joined', ({ roomId, state, role }) => {
     currentRoom = roomId; myRole = role;
+    localStorage.setItem('game_nick', myNick);
+    localStorage.setItem('game_room', roomId);
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('game-view').classList.remove('hidden');
     document.getElementById('room-tag').innerText = `SALA: ${roomId}`;
@@ -44,6 +57,7 @@ socket.on('room_joined', ({ roomId, state, role }) => {
 // CORREÇÃO: PROMOÇÃO IMEDIATA
 socket.on('promoted_to_staff', (data) => {
     myRole = 'staff';
+    localStorage.setItem('game_role', 'staff');
     document.getElementById('player-ui').classList.add('hidden');
     document.getElementById('staff-ui').classList.remove('hidden');
     document.getElementById('staff-log').classList.remove('hidden');
@@ -66,6 +80,7 @@ socket.on('promoted_to_staff', (data) => {
 
 socket.on('demoted_to_player', () => {
     myRole = 'player';
+    localStorage.setItem('game_role', 'player');
     document.getElementById('staff-ui').classList.add('hidden');
     document.getElementById('staff-log').classList.add('hidden');
     document.getElementById('player-ui').classList.remove('hidden');
@@ -122,10 +137,34 @@ socket.on('update_frame', (index) => {
 
 function sendGuess() {
     const val = document.getElementById('guess').value;
-    if (!val) return;
-    socket.emit('send_guess', { roomId: currentRoom, username: myNick, guess: val });
-    document.getElementById('guess').value = '';
+
+    if (val && attemptsLeft > 0) {
+        socket.emit('send_guess', { roomId: currentRoom, username: myNick, guess: val });
+        document.getElementById('guess').value = '';
+    }
+
 }
+
+socket.on('update_attempts', (count) => {
+    attemptsLeft = count;
+    const input = document.getElementById('guess');
+    //const label = document.getElementById('attempts-label');
+    //if (label) label.innerText = `${count} tentativas restantes`;
+
+    if (attemptsLeft <= 0) {
+        input.disabled = true;
+        input.placeholder = "Aguarde o próximo frame...";
+    }
+});
+
+socket.on('reset_attempts', () => {
+    attemptsLeft = 2;
+    const input = document.getElementById('guess');
+    //const label = document.getElementById('attempts-label');
+    //if (label) label.innerText = `2 tentativas restantes`;
+    input.disabled = false;
+    input.placeholder = "Digite o nome do filme...";
+});
 
 function toggleReveal() { socket.emit('toggle_reveal', { roomId: currentRoom }); }
 
@@ -161,8 +200,17 @@ function renderSingleLog(data) {
             <span class="text-[10px] font-black text-slate-400 uppercase">${data.username} (FRAME ${data.frame})</span>
         </div>
         <p class="text-slate-700 font-black text-lg leading-tight uppercase mb-3">${data.guess}</p>
-        <button id="btn-${data.id}" onclick="approve('${data.playerSocketId}', ${data.frame}, '${data.id}')" 
-                class="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-xl font-game border-b-4 border-emerald-700 text-sm">APROVAR</button>`;
+
+        <div class="flex flex-col gap-2">
+            <button id="btn-${data.id}" onclick="approve('${data.playerSocketId}', ${data.frame}, '${data.id}')" 
+                    class="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-xl font-game border-b-4 border-emerald-700 text-sm transition-all active:border-b-0 active:translate-y-1">
+                APROVAR
+            </button>
+            <button onclick="removeGuess('${data.id}')" 
+                    class="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-xl font-game border-b-4 border-red-700 text-sm transition-all active:border-b-0 active:translate-y-1">
+                REPROVAR
+            </button>
+        </div>`;
     list.prepend(item);
 }
 
@@ -177,6 +225,10 @@ function approve(pid, frame, lid) {
     socket.emit('approve_answer', { roomId: currentRoom, playerSocketId: pid, frame, logId: lid });
 }
 
+function removeGuess(logId) {
+    socket.emit('remove_guess', { roomId: currentRoom, logId });
+}
+
 socket.on('remove_log_entry', (lid) => {
     const el = document.getElementById(`log-${lid}`);
     if (el) el.remove();
@@ -188,7 +240,7 @@ socket.on('update_players', (players) => {
     players.sort((a, b) => b.points - a.points).forEach((p, idx) => {
         const isMe = p.id === socket.id;
         const div = document.createElement('div');
-        div.className = `flex flex-col gap-2 p-3 rounded-2xl border-b-4 transition-all ${isMe ? 'bg-indigo-600 border-indigo-800 text-white scale-100' : 'bg-slate-100 border-slate-300 text-slate-800'}`;
+        div.className = `flex flex-col gap-2 p-3 rounded-2xl border-b-4 transition-all ${isMe ? 'bg-slate-600 border-slate-800 text-white scale-100' : 'bg-slate-100 border-slate-300 text-slate-800'}`;
 
         let controls = '';
         if (myRole === 'staff' && !isMe) {
@@ -222,10 +274,19 @@ function kickPlayer(id) {
     }
 }
 
+function leaveRoom() {
+    if (confirm("Deseja realmente sair da sala?")) {
+        localStorage.removeItem('game_room');
+        localStorage.removeItem('game_role');
+        window.location.reload();
+    }
+}
+
 // OUVINTES DE STATUS
 socket.on('you_were_kicked', () => {
+    localStorage.removeItem('game_room');
     alert("Você foi removido da sala pela Staff.");
-    window.location.reload(); // Recarrega para voltar à tela de login
+    window.location.reload();
 });
 
 function fetchFullRanking() {
@@ -233,20 +294,35 @@ function fetchFullRanking() {
 }
 
 // Receber e mostrar o ranking (incluindo quem saiu)
-socket.on('full_ranking_data', (history) => {
+socket.on('full_ranking_data', (data) => {
     const modal = document.getElementById('ranking-modal');
     const list = document.getElementById('full-ranking-list');
     modal.classList.remove('hidden');
     list.innerHTML = '';
 
-    const sorted = Object.entries(history).sort(([, a], [, b]) => b - a);
+    const staffNames = data.players ? data.players.filter(p => p.role === 'staff').map(p => p.name) : [];
+
+    const sorted = Object.entries(data.history || {})
+        .filter(([name]) => !staffNames.includes(name))
+        .sort(([, a], [, b]) => b - a);
+
+    if (sorted.length === 0) {
+        list.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-10 w-full text-center">
+                <span class="text-6xl mb-4">🎖️</span>
+                <p class="font-game text-slate-500 text-lg">Nenhum participante ainda!</p>
+                <p class="text-slate-400 text-sm italic mt-1">A Staff não aparece aqui.</p>
+            </div>
+        `;
+        return;
+    }
 
     sorted.forEach(([name, points], index) => {
         const item = document.createElement('div');
         item.className = "flex justify-between items-center p-4 bg-slate-50 rounded-2xl border-b-4 border-slate-200";
         item.innerHTML = `
-            <span class="font-game text-indigo-600">#${index + 1} ${name}</span>
-            <span class="font-game text-emerald-500">${points} PTS</span>
+            <span class="font-game text-slate-600">#${index + 1} ${name}</span>
+            <span class="font-game text-yellow-500">${points} PTS</span>
         `;
         list.appendChild(item);
     });
@@ -282,11 +358,23 @@ document.getElementById('file-input').onchange = (e) => {
 
 
 window.onload = () => {
+    const savedNick = localStorage.getItem('game_nick');
+    const savedRoom = localStorage.getItem('game_room');
+    const savedRole = localStorage.getItem('game_role') || 'player';
+
+    if (savedNick && savedRoom) {
+        myNick = savedNick;
+        // document.getElementById('nick').value = savedNick;
+        // document.getElementById('room-input').value = savedRoom;
+
+        notify("A retomar sessão...");
+        socket.emit('join_room', { roomId: savedRoom, username: savedNick, requestedRole: savedRole });
+    }
+
     const params = new URLSearchParams(window.location.search);
     const roomFromUrl = params.get('room');
     if (roomFromUrl) {
         document.getElementById('room-input').value = roomFromUrl.toUpperCase();
-        notify("Código da sala preenchido via link!");
     }
 };
 
@@ -307,4 +395,34 @@ function copyRoomCode() {
             notify("Código copiado!");
         });
     }
+}
+
+// Função para formatar e copiar o ranking
+function copyFullRanking() {
+    const list = document.getElementById('full-ranking-list');
+    const items = list.querySelectorAll('div.flex.justify-between');
+
+    if (items.length === 0) {
+        notify("O ranking está vazio!");
+        return;
+    }
+
+    let textToCopy = "## 🏆 RANKING GERAL\n";
+    // textToCopy += "-----------------------------------\n";
+
+    items.forEach((item, index) => {
+        const spans = item.querySelectorAll('span');
+        if (spans.length >= 2) {
+            const nameWithPos = spans[0].innerText;
+            const points = spans[1].innerText;
+            textToCopy += `- ${nameWithPos} - ${points}\n`;
+        }
+    });
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        notify("Ranking copiado! 📋");
+    }).catch(err => {
+        console.error('Erro ao copiar:', err);
+        notify("Erro ao copiar ranking.");
+    });
 }

@@ -27,7 +27,8 @@ io.on('connection', (socket) => {
             currentFrame: 0,
             frames: [],
             title: '',
-            revealed: false
+            revealed: false,
+            attempts: {}
         };
         socket.join(roomId);
         socket.emit('room_created', roomId);
@@ -35,20 +36,49 @@ io.on('connection', (socket) => {
     });
 
     // ENTRAR NA SALA
-    socket.on('join_room', ({ roomId, username }) => {
+    socket.on('join_room', ({ roomId, username, requestedRole }) => {
         const room = rooms[roomId];
         if (room) {
-            const newUser = { id: socket.id, name: username, role: 'player', points: room.rankingHistory[username] || 0 };
-            room.players.push(newUser);
-            if (!room.rankingHistory[username]) room.rankingHistory[username] = 0;
+            // const newUser = { id: socket.id, name: username, role: 'player', points: room.rankingHistory[username] || 0 };
+            // room.players.push(newUser);
+            // if (!room.rankingHistory[username]) room.rankingHistory[username] = 0;
+
+            const existingPlayer = room.players.find(p => p.name === username);
+            let userRole = requestedRole || 'player';
+
+            if (room.rankingHistory[username] === undefined) {
+                room.rankingHistory[username] = 0;
+            }
+
+            if (existingPlayer) {
+                existingPlayer.id = socket.id;
+                existingPlayer.points = room.rankingHistory[username];
+                userRole = existingPlayer.role;
+            } else {
+                const newUser = { id: socket.id, name: username, role: userRole, points: room.rankingHistory[username] };
+                room.players.push(newUser);
+            }
 
             socket.join(roomId);
             socket.emit('room_joined', {
                 roomId,
                 state: { frames: room.frames, currentFrame: room.currentFrame, title: room.title, revealed: room.revealed },
-                role: 'player'
+                role: userRole
             });
+
+            if (userRole === 'staff') {
+                socket.emit('promoted_to_staff', {
+                    state: {
+                        frames: room.frames,
+                        title: room.title,
+                        pendingGuesses: room.pendingGuesses
+                    }
+                });
+            }
+
             io.to(roomId).emit('update_players', room.players);
+        } else {
+            socket.emit('room_not_found', "Sala não encontrada.");
         }
     });
 
@@ -115,7 +145,9 @@ io.on('connection', (socket) => {
     socket.on('change_frame', ({ roomId, index }) => {
         if (rooms[roomId]) {
             rooms[roomId].currentFrame = index;
+            rooms[roomId].attempts = {};
             io.to(roomId).emit('update_frame', index);
+            io.to(roomId).emit('reset_attempts');
         }
     });
 
@@ -130,6 +162,19 @@ io.on('connection', (socket) => {
     socket.on('send_guess', ({ roomId, username, guess }) => {
         const room = rooms[roomId];
         if (room && !room.revealed) {
+            if (!room.attempts) room.attempts = {};
+            if (!room.attempts[socket.id]) room.attempts[socket.id] = 0;
+
+            const LIMITE = 1;
+
+            if (room.attempts[socket.id] >= LIMITE) {
+                socket.emit('notification', "Limite de palpites atingido para este frame!");
+                socket.emit('update_attempts', 0);
+                return;
+            }
+
+            room.attempts[socket.id]++;
+
             const data = {
                 id: Math.random().toString(36).substring(2, 9),
                 playerSocketId: socket.id,
@@ -142,32 +187,75 @@ io.on('connection', (socket) => {
             room.players.forEach(p => {
                 if (p.role === 'staff') io.to(p.id).emit('new_log_staff', data);
             });
+            socket.emit('update_attempts', LIMITE - room.attempts[socket.id]);
         }
     });
+
+    // socket.on('approve_answer', ({ roomId, playerSocketId, frame, logId }) => {
+    //     const room = rooms[roomId];
+    //     if (room) {
+    //         const player = room.players.find(p => p.id === playerSocketId);
+    //         if (player) {
+    //             const pts = (7 - frame);
+    //             player.points += pts;
+    //             room.rankingHistory[player.name] += pts;
+
+    //             room.pendingGuesses = room.pendingGuesses.filter(g => g.id !== logId);
+
+    //             io.to(roomId).emit('update_players', room.players);
+    //             io.to(roomId).emit('remove_log_entry', logId);
+
+    //             io.to(playerSocketId).emit('notification', `🎉 ACERTOU! +${pts} pontos`);
+    //         }
+    //     }
+    // });
 
     socket.on('approve_answer', ({ roomId, playerSocketId, frame, logId }) => {
         const room = rooms[roomId];
         if (room) {
-            const player = room.players.find(p => p.id === playerSocketId);
-            if (player) {
-                const pts = (7 - frame);
-                player.points += pts;
-                room.rankingHistory[player.name] += pts;
+            // Encontra o palpite específico no log para saber o nome do jogador
+            const guessEntry = room.pendingGuesses.find(g => g.id === logId);
+            if (!guessEntry) return;
 
-                room.pendingGuesses = room.pendingGuesses.filter(g => g.id !== logId);
+            const pts = (7 - frame);
+            const playerName = guessEntry.username;
 
-                io.to(roomId).emit('update_players', room.players);
-                io.to(roomId).emit('remove_log_entry', logId);
-
-                io.to(playerSocketId).emit('notification', `🎉 ACERTOU! +${pts} pontos`);
+            // 1. Atualiza o Histórico Geral (mesmo se estiver offline)
+            if (room.rankingHistory[playerName] === undefined) {
+                room.rankingHistory[playerName] = 0;
             }
+            room.rankingHistory[playerName] += pts;
+
+            // 2. Atualiza o jogador na lista ativa (se ele ainda estiver online)
+            const activePlayer = room.players.find(p => p.name === playerName);
+            if (activePlayer) {
+                activePlayer.points = room.rankingHistory[playerName];
+                io.to(activePlayer.id).emit('notification', `🎉 ACERTOU! +${pts} pontos`);
+            }
+
+            // 3. Limpa o log e avisa a sala
+            room.pendingGuesses = room.pendingGuesses.filter(g => g.id !== logId);
+            io.to(roomId).emit('update_players', room.players);
+            io.to(roomId).emit('remove_log_entry', logId);
+        }
+    });
+
+    socket.on('remove_guess', ({ roomId, logId }) => {
+        const room = rooms[roomId];
+        if (room) {
+            room.pendingGuesses = room.pendingGuesses.filter(g => g.id !== logId);
+            io.to(roomId).emit('remove_log_entry', logId);
         }
     });
 
     socket.on('get_full_ranking', ({ roomId }) => {
         const room = rooms[roomId];
         if (room) {
-            socket.emit('full_ranking_data', room.rankingHistory);
+            socket.emit('full_ranking_data', {
+                history: room.rankingHistory,
+                players: room.players
+
+            });
         }
     });
 
@@ -183,15 +271,23 @@ io.on('connection', (socket) => {
 
     socket.on('disconnecting', () => {
         socket.rooms.forEach(roomId => {
-            if (rooms[roomId]) {
-                rooms[roomId].players = rooms[roomId].players.filter(p => p.id !== socket.id);
-                io.to(roomId).emit('update_players', rooms[roomId].players);
+            const room = rooms[roomId];
+            if (room) {
+                room.players = room.players.filter(p => p.id !== socket.id);
+
+                if (room.players.length === 0) {
+                    delete rooms[roomId];
+                } else {
+                    io.to(roomId).emit('update_players', room.players);
+                }
             }
         });
     });
+
 });
 
-const PORT = process.env.PORT || 8080; 
+
+const PORT = process.env.PORT || 8080;
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server ON at port ${PORT}`);

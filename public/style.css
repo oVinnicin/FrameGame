@@ -2,6 +2,7 @@
     --gartic-blue: #1b63da;
     --gartic-yellow: #ffdb58;
     --gartic-bg: #f2f5f8;
+    --frame-bg: #746d7a;
 }
 
 body {
@@ -10,12 +11,12 @@ body {
     overflow-x: hidden;
 }
 
-.bg-waves {
-    background-image: url("../assets/wave-pattern-2.svg") !important;
-    background-size: cover;
-    /* background-size: auto; */
-    background-repeat: no-repeat;
-    /* background-repeat: repeat; */
+.bg-pattern {
+    background-image: url("../assets/pattern.svg") !important;
+    /* background-size: cover; */
+    background-size: auto;
+    /* background-repeat: no-repeat; */
+    background-repeat: repeat;
     background-position: center;
 }
 
@@ -32,15 +33,13 @@ body {
     transform: translateX(-50%) translateY(-100px); 
     
     /* Styling */
-    background-color: #4f46e5; /* bg-indigo-600 */
-    color: #ffffff;
     padding: 1rem 2rem;        /* py-4 px-8 */
     border-radius: 9999px;     /* rounded-full */
     font-weight: 700;          /* font-bold */
     
     /* Effects */
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* shadow-2xl */
-    z-index: 200;
+    z-index: 400;
     opacity: 0;
     
     /* Animation */
@@ -64,4 +63,30 @@ body {
 ::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 10px;
+}
+
+/* style.css */
+
+/* Estilização da barra de rolagem para navegadores Chrome/Edge/Safari */
+.scroll-custom::-webkit-scrollbar {
+    width: 6px;
+}
+
+.scroll-custom::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scroll-custom::-webkit-scrollbar-thumb {
+    background-color: #e2e8f0; /* Um cinza bem clarinho */
+    border-radius: 20px;
+}
+
+.scroll-custom::-webkit-scrollbar-thumb:hover {
+    background-color: #cbd5e1; /* Um pouco mais escuro no hover */
+}
+
+/* Para Firefox */
+.scroll-custom {
+    scrollbar-width: thin;
+    scrollbar-color: #e2e8f0 transparent;
 }
