@@ -45,6 +45,7 @@ socket.on('room_joined', ({ roomId, state, role }) => {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('game-view').classList.remove('hidden');
     document.getElementById('room-tag').innerText = `SALA: ${roomId}`;
+
     if (state && state.frames.length > 0) {
         currentFrames = state.frames;
         document.getElementById('main-frame').src = state.frames[state.currentFrame];
@@ -109,6 +110,7 @@ socket.on('game_started', (state) => {
     document.getElementById('game-view').classList.remove('hidden');
     document.getElementById('main-frame').src = state.frames[0];
     document.getElementById('correct-title').innerText = state.title;
+
     if (myRole === 'staff') {
         document.getElementById('staff-movie-name').innerText = state.title;
         document.getElementById('staff-ui').classList.remove('hidden');
@@ -362,12 +364,14 @@ window.onload = () => {
     const savedRoom = localStorage.getItem('game_room');
     const savedRole = localStorage.getItem('game_role') || 'player';
 
+    document.getElementById('nick').value = savedNick;
+    
     if (savedNick && savedRoom) {
         myNick = savedNick;
-        // document.getElementById('nick').value = savedNick;
+
         // document.getElementById('room-input').value = savedRoom;
 
-        notify("A retomar sessão...");
+        notify("Retomando a sessão...");
         socket.emit('join_room', { roomId: savedRoom, username: savedNick, requestedRole: savedRole });
     }
 
@@ -384,7 +388,7 @@ function copyRoomCode() {
 
     if (code && code !== '----') {
         navigator.clipboard.writeText(code).then(() => {
-            notify("Código copiado! 📋");
+            notify("Código copiado!");
         }).catch(err => {
             const tempInput = document.createElement("input");
             tempInput.value = code;
@@ -420,7 +424,7 @@ function copyFullRanking() {
     });
 
     navigator.clipboard.writeText(textToCopy).then(() => {
-        notify("Ranking copiado! 📋");
+        notify("Ranking copiado!");
     }).catch(err => {
         console.error('Erro ao copiar:', err);
         notify("Erro ao copiar ranking.");
