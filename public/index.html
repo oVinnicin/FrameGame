@@ -15,6 +15,8 @@
 
 <body class="bg-pattern bg-[var(--frame-bg)] text-slate-800 min-h-screen font-sans">
 
+    <div id="notif-box" class="notification bg-yellow-400 text-yellow-900"></div>
+    
     <!-- LOGIN -->
     <div id="login-screen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div class="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] w-full max-w-sm shadow-2xl text-center">
@@ -72,7 +74,7 @@
             <div id="player-list" class="space-y-2 overflow-y-auto flex-1 pr-2 scroll-custom">
             </div>
 
-            <div id="room-tag" onclick="copyRoomCode()"
+            <div id="room-tag" onclick="copyRoomCode(event)"
                 class="mt-4 bg-yellow-200 p-2 rounded-xl text-center font-black text-yellow-600 text-xs cursor-pointer">
                 SALA: ----</div>
         </aside>
@@ -145,7 +147,6 @@
             </div>
         </div>
 
-        <div id="notif-box" class="notification bg-yellow-400 text-yellow-900"></div>
     </div>
 
     <script src="script.js"></script>

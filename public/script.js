@@ -1,6 +1,7 @@
 const socket = io();
 let myRole = 'player', myNick = '', currentRoom = '', currentFrames = [];
 let attemptsLeft = 1;
+let hasGuessedCorrectly = false;
 
 function notify(msg) {
     const el = document.getElementById('notif-box');
@@ -18,8 +19,22 @@ socket.on('room_not_found', (msg) => {
 });
 
 function create() {
-    myNick = document.getElementById('nick').value;
-    if (myNick) socket.emit('create_room', { username: myNick });
+    const adminCode = "trindade";
+
+    const nick = document.getElementById('nick').value;
+
+    if (!nick) {
+        notify("Digite um nick primeiro!");
+        return;
+    }
+
+    const inputCode = prompt("Digite o código da Equipe de Mídia para criar uma sala.");
+
+    if (inputCode === adminCode) {
+        socket.emit('create_room', { username: nick });
+    } else if (inputCode !== null) { 
+        notify("Código de Equipe incorreto.");
+    }
 }
 
 function join() {
@@ -160,12 +175,13 @@ socket.on('update_attempts', (count) => {
 });
 
 socket.on('reset_attempts', () => {
-    attemptsLeft = 2;
     const input = document.getElementById('guess');
     //const label = document.getElementById('attempts-label');
     //if (label) label.innerText = `2 tentativas restantes`;
-    input.disabled = false;
-    input.placeholder = "Digite o nome do filme...";
+    if (!hasGuessedCorrectly) {
+        input.disabled = false;
+        input.placeholder = "Seu palpite...";
+    }
 });
 
 function toggleReveal() { socket.emit('toggle_reveal', { roomId: currentRoom }); }
@@ -234,6 +250,16 @@ function removeGuess(logId) {
 socket.on('remove_log_entry', (lid) => {
     const el = document.getElementById(`log-${lid}`);
     if (el) el.remove();
+});
+
+socket.on('lock_guess', () => {
+    hasGuessedCorrectly = true;
+    const guessInput = document.getElementById('guess');
+    if (guessInput) {
+        guessInput.disabled = true;
+        guessInput.value = "";
+        guessInput.placeholder = "Você já acertou este round!";
+    }
 });
 
 socket.on('update_players', (players) => {
@@ -382,23 +408,25 @@ window.onload = () => {
     }
 };
 
-function copyRoomCode() {
-    const roomText = document.getElementById('room-tag').innerText;
-    const code = roomText.replace('SALA: ', '');
+function copyRoomCode(event) {
+    const code = currentRoom;
+    if (!code) return;
 
-    if (code && code !== '----') {
-        navigator.clipboard.writeText(code).then(() => {
-            notify("Código copiado!");
-        }).catch(err => {
-            const tempInput = document.createElement("input");
-            tempInput.value = code;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand("copy");
-            document.body.removeChild(tempInput);
-            notify("Código copiado!");
-        });
-    }
+    const isShiftPressed = event.shiftKey;
+    
+    const textToCopy = isShiftPressed 
+        ? `${window.location.origin}/?room=${code}` 
+        : code;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        if (isShiftPressed) {
+            notify("Link convite copiado! 🔗");
+        } else {
+            notify("Código copiado! 📋");
+        }
+    }).catch(err => {
+        console.error("Erro ao copiar:", err);
+    });
 }
 
 // Função para formatar e copiar o ranking

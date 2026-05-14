@@ -28,7 +28,9 @@ io.on('connection', (socket) => {
             frames: [],
             title: '',
             revealed: false,
-            attempts: {}
+            attempts: {},
+            correctGuessesInRound: 0,
+            winners: [],
         };
         socket.join(roomId);
         socket.emit('room_created', roomId);
@@ -217,8 +219,25 @@ io.on('connection', (socket) => {
             const guessEntry = room.pendingGuesses.find(g => g.id === logId);
             if (!guessEntry) return;
 
-            const pts = (7 - frame);
+            let pts = (7 - frame);
             const playerName = guessEntry.username;
+
+            if (!room.winners) room.winners = [];
+            room.winners.push(playerName);
+
+            room.correctGuessesInRound++;
+            let bonusText = "";
+
+            if (room.correctGuessesInRound === 1) {
+                pts += 3;
+                bonusText = " (BÔNUS 1º LUGAR)";
+            } else if (room.correctGuessesInRound === 2) {
+                pts += 2;
+                bonusText = " (BÔNUS 2º LUGAR)";
+            } else if (room.correctGuessesInRound === 3) {
+                pts += 1;
+                bonusText = " (BÔNUS 3º LUGAR)";
+            }
 
             // 1. Atualiza o Histórico Geral (mesmo se estiver offline)
             if (room.rankingHistory[playerName] === undefined) {
@@ -230,13 +249,14 @@ io.on('connection', (socket) => {
             const activePlayer = room.players.find(p => p.name === playerName);
             if (activePlayer) {
                 activePlayer.points = room.rankingHistory[playerName];
-                io.to(activePlayer.id).emit('notification', `🎉 ACERTOU! +${pts} pontos`);
+                io.to(activePlayer.id).emit('notification', `🎉 ACERTOU! +${pts} pontos${bonusText}`);
             }
 
             // 3. Limpa o log e avisa a sala
             room.pendingGuesses = room.pendingGuesses.filter(g => g.id !== logId);
             io.to(roomId).emit('update_players', room.players);
             io.to(roomId).emit('remove_log_entry', logId);
+            io.to(playerSocketId).emit('lock_guess');
         }
     });
 
@@ -265,6 +285,8 @@ io.on('connection', (socket) => {
             rooms[roomId].frames = [];
             rooms[roomId].title = '';
             rooms[roomId].revealed = false;
+            rooms[roomId].correctGuessesInRound = 0;
+            rooms[roomId].winners = [];
             io.to(roomId).emit('prepare_next_round');
         }
     });
